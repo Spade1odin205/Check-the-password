@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>Realtime Password Evaluator</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js"></script>
+  <style>
+    body {
+      font-family: Inter, Arial, sans-serif;
+      background:#f3f4f6;
+      margin:0; padding:40px;
+      display:flex; justify-content:center; align-items:flex-start;
+      min-height:100vh;
+    }
+    .card {
+      background:#fff;
+      border-radius:12px;
+      box-shadow:0 4px 20px rgba(0,0,0,0.05);
+      padding:24px;
+      width:520px;
+    }
+    h1 {
+      margin:0 0 16px;
+      font-size:20px;
+      font-weight:600;
+    }
+    label { font-weight:500; margin-bottom:8px; display:block; }
+
+    .input-wrap {
+      display:block;
+      width:100%;
+      box-sizing:border-box;
+      padding-left:12px;
+      padding-right:12px;
+    }
+
+    input[type=text] {
+      width:100%;
+      padding:12px 14px;
+      border:1px solid #d1d5db;
+      border-radius:8px;
+      font-size:16px;
+      outline:none;
+      box-sizing:border-box;
+    }
+    input[type=text]:focus {
+      border-color:#2563eb;
+      box-shadow:0 0 0 2px rgba(37,99,235,0.12);
+    }
+
+    .controls {
+      margin-top:10px;
+      display:flex;
+      gap:8px;
+      padding-left:12px;
+      padding-right:12px;
+      box-sizing:border-box;
+    }
+    .controls button {
+      padding:8px 12px;
+      border-radius:8px;
+      border:1px solid #cbd5e1;
+      background:#fff;
+      cursor:pointer;
+      font-weight:600;
+    }
+    .controls button.primary {
+      background:#2563eb;
+      color:#fff;
+      border-color:transparent;
+    }
+
+    .bar-wrap {
+      margin:16px 0;
+      display:flex; align-items:center; gap:10px;
+      padding-left:12px;
+      padding-right:12px;
+      box-sizing:border-box;
+    }
+    .bar {
+      flex:1; height:10px;
+      background:#e5e7eb; border-radius:6px;
+      overflow:hidden;
+    }
+    .bar-inner {
+      height:100%; width:0%;
+      background:#ef4444;
+      transition:width .2s ease, background .2s ease;
+    }
+    .label-box {
+      min-width:70px; text-align:center;
+      font-weight:600;
+    }
+    .result-box {
+      border:1px solid #e5e7eb;
+      background:#f9fafb;
+      border-radius:8px;
+      padding:16px;
+      margin-top:8px;
+    }
+    .result-box p {
+      margin:6px 0;
+      font-size:15px;
+    }
+    .footer {
+      margin-top:12px;
+      font-size:13px;
+      color:#6b7280;
+      text-align:center;
+    }
+
+    @media (max-width:560px){
+      .card { width:92%; }
+      .controls { flex-direction:column; }
+      .controls button { width:100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Realtime Password Evaluator</h1>
+
+    <label for="pw">Nhập mật khẩu :</label>
+    <div class="input-wrap">
+      <input id="pw" type="text" placeholder="VD: P@ssw0rd123" autocomplete="off" />
+    </div>
+
+    <div class="controls">
+      <button id="genBtn" class="primary" title="Sinh mật khẩu ngẫu nhiên">Sinh mật khẩu ngẫu nhiên</button>
+      <button id="copyBtn" title="Sao chép mật khẩu vào clipboard">Sao chép</button>
+      <div style="flex:1"></div>
+    </div>
+
+    <div class="bar-wrap" aria-hidden>
+      <div class="bar"><div id="barInner" class="bar-inner"></div></div>
+      <div id="labelBox" class="label-box">—</div>
+    </div>
+
+    <div class="result-box">
+      <p><strong>Số ký tự:</strong> <span id="len">—</span></p>
+      <p><strong>Thời gian crack ước lượng:</strong> <span id="ctime">—</span></p>
+      <p><strong>Nhận xét:</strong> <span id="comment">—</span></p>
+    </div>
+
+    <div class="footer">
+      Demo thôi nhe các ní =))))))))))) 
+    </div>
+  </div>
+
+<script>
+  // --- utils ---
+  function humanTime(sec){
+    if(sec === null || sec === undefined || !isFinite(sec)) return 'n/a';
+    if(sec < 1) return "<1 giây";
+    const units = [
+      ["năm",365*24*3600],
+      ["ngày",24*3600],
+      ["giờ",3600],
+      ["phút",60],
+      ["giây",1]
+    ];
+    for(const [name,val] of units){
+      if(sec >= val){
+        const v = Math.floor(sec / val);
+        return v + " " + name;
+      }
+    }
+    return Math.round(sec) + " giây";
+  }
+
+  function conservativeCrackSeconds(zx) {
+    if(!zx) return null;
+    const secs = zx.crack_times_seconds || {};
+    const candidates = [];
+    const offlineKeys = [
+      'offline_fast_hashing_1e10_per_second',
+      'offline_slow_hashing_1e4_per_second',
+      'offline_fast_hashing_1e4_per_second',
+      'offline_slow_hashing_1e3_per_second'
+    ];
+    offlineKeys.forEach(k => {
+      if(secs[k] && Number.isFinite(secs[k])) candidates.push(secs[k]);
+    });
+    if(candidates.length > 0) return Math.max(...candidates);
+
+    if(zx.guesses && Number.isFinite(zx.guesses)){
+      const g = zx.guesses;
+      const speeds = [1e9, 1e10];
+      const secsFromGuesses = speeds.map(s => g / s);
+      return Math.max(...secsFromGuesses);
+    }
+    return null;
+  }
+
+  // --- UI elements ---
+  const pwInput = document.getElementById('pw');
+  const genBtn = document.getElementById('genBtn');
+  const copyBtn = document.getElementById('copyBtn');
+  const barInner = document.getElementById('barInner');
+  const labelBox = document.getElementById('labelBox');
+  const lenEl = document.getElementById('len');
+  const ctimeEl = document.getElementById('ctime');
+  const commentEl = document.getElementById('comment');
+
+  function setBarByScore(score){
+    const pct = Math.round((score / 4) * 100);
+    barInner.style.width = pct + '%';
+    const colors = ['#ef4444','#f59e0b','#f59e0b','#60a5fa','#16a34a'];
+    barInner.style.background = colors[Math.max(0, Math.min(4, score))];
+  }
+
+  function analyzeAndRender(pw){
+    if(!pw){
+      setBarByScore(0);
+      labelBox.innerText = '—';
+      lenEl.innerText = '—';
+      ctimeEl.innerText = '—';
+      commentEl.innerText = '—';
+      return;
+    }
+
+    let zx = null;
+    try { zx = zxcvbn(pw); } catch(e) { zx = null; }
+
+    const score = zx && typeof zx.score === 'number' ? zx.score : 0;
+    setBarByScore(score);
+
+    const labels = ['Rất yếu','Yếu','Trung bình','Mạnh','Rất mạnh'];
+    labelBox.innerText = labels[score] || '—';
+    lenEl.innerText = pw.length;
+
+    const consSec = conservativeCrackSeconds(zx);
+    if(consSec !== null){
+      ctimeEl.innerText = humanTime(consSec);
+    } else {
+      ctimeEl.innerText = 'n/a';
+    }
+
+    commentEl.innerText = labels[score] || '—';
+  }
+
+  // debounce for input
+  let timer = null;
+  pwInput.addEventListener('input', (e) => {
+    const v = e.target.value;
+    if(timer) clearTimeout(timer);
+    timer = setTimeout(()=> analyzeAndRender(v), 120);
+  });
+
+  // --- secure random generator using Web Crypto ---
+  function secureRandomInt(max) {
+    // returns integer in [0, max)
+    const arr = new Uint32Array(1);
+    window.crypto.getRandomValues(arr);
+    return arr[0] % max;
+  }
+
+  // generate password using full charset
+  function generatePassword(minLen = 12, maxLen = 20) {
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const digits = '0123456789';
+    const symbols = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+    const all = lower + upper + digits + symbols;
+    const len = minLen + secureRandomInt(maxLen - minLen + 1);
+    let pw = '';
+    for(let i=0;i<len;i++){
+      pw += all.charAt( secureRandomInt(all.length) );
+    }
+    return pw;
+  }
+
+  // generate button handler
+  genBtn.addEventListener('click', () => {
+    const pw = generatePassword(12, 20); // random length 12..20
+    pwInput.value = pw;
+    // trigger analysis immediately
+    analyzeAndRender(pw);
+  });
+
+  // copy button handler
+  copyBtn.addEventListener('click', async () => {
+    const pw = pwInput.value || '';
+    if(!pw) return;
+    try {
+      await navigator.clipboard.writeText(pw);
+      copyBtn.innerText = 'Đã sao chép';
+      setTimeout(()=> copyBtn.innerText = 'Sao chép', 1200);
+    } catch(e){
+      // fallback: select + execCommand
+      pwInput.select();
+      document.execCommand('copy');
+      copyBtn.innerText = 'Đã sao chép';
+      setTimeout(()=> copyBtn.innerText = 'Sao chép', 1200);
+    }
+  });
+
+  // optional: prefill nothing; user can click generate
+  // pwInput.value = '';
+</script>
+</body>
+</html>
