@@ -34,13 +34,15 @@ Mở Terminal (hoặc CMD/PowerShell) và chạy lệnh:
 
 ```bash
 pip install streamlit matplotlib zxcvbn
-
+```
 
 ### Hướng dẫn sử dụng
 Bước 1: Khởi chạy ứng dụng
 Tại thư mục chứa file app.py, chạy lệnh:
 
+```bash
 streamlit run app.py
+```
 
 Trình duyệt sẽ tự động mở địa chỉ http://localhost:8501.
 
