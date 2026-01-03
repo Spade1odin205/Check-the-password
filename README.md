@@ -36,8 +36,9 @@ Mở Terminal (hoặc CMD/PowerShell) và chạy lệnh:
 pip install streamlit matplotlib zxcvbn
 ```
 
-### Hướng dẫn sử dụng
-Bước 1: Khởi chạy ứng dụng
+## Hướng dẫn sử dụng
+
+###Bước 1: Khởi chạy ứng dụng
 Tại thư mục chứa file app.py, chạy lệnh:
 
 ```bash
@@ -46,13 +47,13 @@ streamlit run app.py
 
 Trình duyệt sẽ tự động mở địa chỉ http://localhost:8501.
 
-Bước 2: Thao tác trên giao diện
+###Bước 2: Thao tác trên giao diện
 
 Cách 1 - Nhập tay: Nhập mật khẩu bất kỳ vào ô chính giữa màn hình để xem phân tích.
 
 Cách 2 - Sinh tự động: Mở thanh menu bên trái (Sidebar), chọn độ dài và các tùy chọn (Số, Ký tự đặc biệt), sau đó bấm "TẠO & PHÂN TÍCH NGAY".
 
-Bước 3: Đọc biểu đồ
+###Bước 3: Đọc biểu đồ
 Đường nét đứt: Các ngưỡng lý thuyết (ví dụ: đường màu xanh lá là mức cao nhất - Full ASCII).
 
 Điểm màu Xanh (Blue dot): Entropy lý thuyết của mật khẩu bạn nhập.
