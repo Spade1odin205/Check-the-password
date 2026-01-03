@@ -47,6 +47,7 @@ streamlit run app.py
 Trình duyệt sẽ tự động mở địa chỉ http://localhost:8501.
 
 Bước 2: Thao tác trên giao diện
+
 Cách 1 - Nhập tay: Nhập mật khẩu bất kỳ vào ô chính giữa màn hình để xem phân tích.
 
 Cách 2 - Sinh tự động: Mở thanh menu bên trái (Sidebar), chọn độ dài và các tùy chọn (Số, Ký tự đặc biệt), sau đó bấm "TẠO & PHÂN TÍCH NGAY".
